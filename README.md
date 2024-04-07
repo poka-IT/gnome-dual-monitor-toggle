@@ -12,7 +12,7 @@ Dual Monitor Toggle is a GNOME Shell extension that allows you to easily enable 
 
 ## Installation
 
-1. Download the latest release of the extension from the [GNOME Extensions website](https://extensions.gnome.org/extension/dual-monitor-toggle) or from the [GitHub releases page](https://github.com/poka-IT/gnome-dual-monitor-toggle/releases).
+1. Download the latest release of the extension from the [GNOME Extensions website](https://extensions.gnome.org/extension/6898/dual-monitor-toggle/) or from the [GitHub releases page](https://github.com/poka-IT/gnome-dual-monitor-toggle/releases).
 2. Extract the downloaded ZIP file to the GNOME Shell extensions directory:
    - For local user installation: `~/.local/share/gnome-shell/extensions/`
    - For system-wide installation: `/usr/share/gnome-shell/extensions/`
