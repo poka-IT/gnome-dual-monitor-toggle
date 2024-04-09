@@ -169,7 +169,15 @@ class SecondMonitorIndicator extends SystemIndicator {
         this._indicator = this._addIndicator();
         this._indicator.icon_name = 'video-display-symbolic';
 
-        this.quickSettingsItems.push(new SecondMonitorToggle(this._indicator));
+        this._secondMonitorToggle = new SecondMonitorToggle(this._indicator);
+        this.quickSettingsItems.push(this._secondMonitorToggle);
+    }
+
+    destroy() {
+        this._secondMonitorToggle.destroy();
+        this._secondMonitorToggle = null;
+        
+        super.destroy();
     }
 });
 
