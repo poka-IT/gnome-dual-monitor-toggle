@@ -50,9 +50,9 @@ class SecondMonitorToggle extends QuickMenuToggle {
         // Add menu items for each available monitor
         for (const [monitorName, _] of Object.entries(this._configsMap)) {
             const item = new PopupMenu.PopupMenuItem(monitorName);
-            item.connect('activate', () => {
+            item.connect('activate', async () => {
                 this._monitor = monitorName;
-                this._getMonitorConfig();
+                await this._getMonitorConfig();
                 this._sync();
             });
             this.menu.addMenuItem(item);
@@ -126,7 +126,7 @@ class SecondMonitorToggle extends QuickMenuToggle {
         }
     }
     
-    async _toggleSecondMonitor() {
+    _toggleSecondMonitor() {
         this._sync();
         if (this.checked) {
             console.debug(`Disabling monitor: ${this._monitor}`);

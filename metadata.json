@@ -3,7 +3,7 @@
     "name": "Dual Monitor Toggle",
     "description": "Easily enable or disable your secondary monitor with a single click. This extension adds a toggle button to the system menu, allowing you to quickly switch your second screen on or off without needing to navigate through settings. It automatically detects your connected monitors and their configurations, making it simple to manage your multi-monitor setup.",
     "shell-version": ["45","46"],
-    "version": 4,
+    "version": 5,
     "url": "https://github.com/poka-IT/gnome-dual-monitor-toggle",
     "license": "GPL-3.0",
     "author": "poka"
