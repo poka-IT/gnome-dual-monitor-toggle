@@ -1,0 +1,11 @@
+.selectLabel {
+    font-weight: bold;
+    font-size: 1.2em;
+    padding: 5px;
+    color: white;
+}
+
+.selectLabel .popup-menu-icon {
+    color: white;
+    margin-right: 7px;
+}
