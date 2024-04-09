@@ -79,9 +79,9 @@ class SecondMonitorToggle extends QuickMenuToggle {
         for (let monitor of this._monitors) {
             let item = new PopupMenu.PopupMenuItem(monitor);
             item.connect('activate', () => {
-            this._monitor = monitor;
-            this._getMonitorConfig();
-            this._sync();
+                this._monitor = monitor;
+                this._getMonitorConfig();
+                this._sync();
             });
             this.menu.addMenuItem(item);
         }
@@ -93,7 +93,18 @@ class SecondMonitorToggle extends QuickMenuToggle {
         this.checked = nMonitors > 1;
         this._updateIndicatorVisibility();
     }
-    
+
+    // Update the selected monitor visual in the menu
+    _updateSelectedMonitor() {
+        for (let item of this.menu._getMenuItems()) {
+            if (item.label.text === this._monitor) {
+                item.add_style_class_name('selectedMonitor');
+            } else {
+                item.remove_style_class_name('selectedMonitor');
+            }
+        }
+    }
+
     _updateIndicatorVisibility() {
         if (this.checked) {
             this._indicator.visible = true;
@@ -124,6 +135,7 @@ class SecondMonitorToggle extends QuickMenuToggle {
                     break;
                 }
             }
+            this._updateSelectedMonitor();
         } catch (e) {
             console.error(e);
         }
