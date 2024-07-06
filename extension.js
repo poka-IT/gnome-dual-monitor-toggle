@@ -1,14 +1,34 @@
-import GLib from 'gi://GLib';  
+import GLib from 'gi://GLib';
 import GObject from 'gi://GObject';
 import Gio from 'gi://Gio';
 import {QuickMenuToggle, SystemIndicator} from 'resource:///org/gnome/shell/ui/quickSettings.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 
+const DisplayConfigInterface = `
+<node>
+  <interface name="org.gnome.Mutter.DisplayConfig">
+    <method name="GetCurrentState">
+      <arg type="u" direction="out" name="serial"/>
+      <arg type="a((ssss)a(siiddada{sv})a{sv})" direction="out" name="monitors"/>
+      <arg type="a(iiduba(ssss)a{sv})" direction="out" name="logical_monitors"/>
+      <arg type="a{sv}" direction="out" name="properties"/>
+    </method>
+    <method name="ApplyMonitorsConfig">
+      <arg type="u" direction="in" name="serial"/>
+      <arg type="u" direction="in" name="method"/>
+      <arg type="a(iiduba(ssa{sv}))" direction="in" name="logical_monitors"/>
+      <arg type="a{sv}" direction="in" name="properties"/>
+    </method>
+  </interface>
+</node>`;
+
+const DisplayConfigProxy = Gio.DBusProxy.makeProxyWrapper(DisplayConfigInterface);
+
 const SecondMonitorToggle = GObject.registerClass(
 class SecondMonitorToggle extends QuickMenuToggle {
     _init(indicator) {
-        console.debug(`Initializing Dual Monitor Toggle`);
+        console.log(`Initializing Dual Monitor Toggle`);
 
         super._init({
             title: _('Second Monitor'),
@@ -16,42 +36,77 @@ class SecondMonitorToggle extends QuickMenuToggle {
             toggleMode: true,
         });
 
-        // Add callback to communicate_utf8_async method
-        Gio._promisify(Gio.Subprocess.prototype, 'communicate_utf8_async');
-
-        // Set initial values for monitor configuration
         this._indicator = indicator;
-        this._configsMap = {};
+        this._proxy = null;
+        this._monitors = [];
+        this._logicalMonitors = [];
+        this._properties = {};
+        this._serial = 0;
+        this._layoutMode = 1; // Default to logical layout
+        this._supportsChangingLayoutMode = false;
 
-        // Fetch available monitors and build monitor menu
-        this._getMonitorConfig().then(() => {
+        this._initProxy();
+        this.connect('clicked', this._toggleSecondMonitor.bind(this));
+    }
+
+    _initProxy() {
+        this._proxy = new DisplayConfigProxy(
+            Gio.DBus.session,
+            'org.gnome.Mutter.DisplayConfig',
+            '/org/gnome/Mutter/DisplayConfig',
+            (proxy, error) => {
+                if (error) {
+                    console.log('Failed to create DBus proxy:', error);
+                    this._disableToggle();
+                } else {
+                    this._getMonitorConfig().catch(e => {
+                        console.log('Error getting monitor configuration:', e);
+                        this._disableToggle();
+                    });
+                }
+            }
+        );
+    }
+
+    async _getMonitorConfig() {
+        try {
+            const [serial, monitors, logicalMonitors, properties] = await this._proxy.GetCurrentStateAsync();
+            this._serial = serial;
+            this._monitors = monitors;
+            this._logicalMonitors = logicalMonitors;
+            this._properties = properties;
+            this._layoutMode = properties['layout-mode']?.deepUnpack() ?? 1;
+            this._supportsChangingLayoutMode = properties['supports-changing-layout-mode']?.deepUnpack() ?? false;
+            // console.log(`Monitors detected: ${this._monitors.length}`);
+            // console.log(`Logical monitors: ${this._logicalMonitors.length}`);
+            // console.log(`Layout mode: ${this._layoutMode}`);
+            // console.log(`Supports changing layout mode: ${this._supportsChangingLayoutMode}`);
+            // console.log('Raw monitor data:', JSON.stringify(this._monitors, null, 2));
+            // console.log('Raw logical monitor data:', JSON.stringify(this._logicalMonitors, null, 2));
             this._buildMonitorMenu();
             this._updateSelectedMonitor();
             this._sync();
-        });
-
-        this.connect('clicked', this._toggleSecondMonitor.bind(this));
+        } catch (e) {
+            console.log('Error getting monitor configuration:', e);
+            this._disableToggle();
+        }
     }
 
     _buildMonitorMenu() {
         this.menu.removeAll();
 
-        // Add the menu title
-        const menuTitle = new PopupMenu.PopupImageMenuItem(_("Select a monitor"), 'video-display-symbolic', {
+        const menuTitle = new PopupMenu.PopupMenuItem(_("Select a monitor"), {
             reactive: false,
             style_class: 'selectLabel'
         });
-        menuTitle._icon.icon_size = 24;
         this.menu.addMenuItem(menuTitle);
 
-        // Add a separator
         this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
 
-        // Add menu items for each available monitor
-        for (const [monitorName, _] of Object.entries(this._configsMap)) {
-            const item = new PopupMenu.PopupMenuItem(monitorName);
+        for (const monitor of this._monitors) {
+            const item = new PopupMenu.PopupMenuItem(monitor[0][0]); // Use the display port name
             item.connect('activate', async () => {
-                this._monitor = monitorName;
+                this._monitor = monitor[0][0];
                 await this._getMonitorConfig();
                 this._sync();
             });
@@ -59,99 +114,108 @@ class SecondMonitorToggle extends QuickMenuToggle {
         }
     }
 
-    // Sync the toggle state with the number of connected monitors
     _sync() {
-        const nMonitors = global.display.get_n_monitors();
+        const nMonitors = this._logicalMonitors.length;
         this.checked = nMonitors > 1;
         this._updateIndicatorVisibility();
     }
 
-    // Update the selected monitor visual in the menu
     _updateSelectedMonitor() {
         for (const item of this.menu._getMenuItems()) {
-            if (item.label.text === this._monitor) {
-                item.add_style_class_name('selectedMonitor');
+            if (item.label && item.label.text === this._monitor) {
+                item.setOrnament(PopupMenu.Ornament.DOT);
             } else {
-                item.remove_style_class_name('selectedMonitor');
+                item.setOrnament(PopupMenu.Ornament.NONE);
             }
         }
     }
 
     _updateIndicatorVisibility() {
-        if (this.checked) {
-            this._indicator.visible = true;
-        } else {
-            this._indicator.visible = false;
-        }
+        this._indicator.visible = this.checked;
     }
 
-    async _getMonitorConfig() {
-        try {
-            // Run xrandr command to query monitor information
-            const proc = Gio.Subprocess.new(['xrandr', '--query'], Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_PIPE);
-            const [stdout, stderr] = await proc.communicate_utf8_async(null, null);
-            if (!proc.get_successful()) {
-                throw new Error(stderr);
-            }
-            const isConfigsMapEmpty = Object.keys(this._configsMap).length === 0;
-            const lines = stdout.split('\n');
-            for (const line of lines) {
-                // Extract enabled monitor names from xrandr output
-                const modeMatch = line.match(/(\d+x\d+\+\d+\+\d+)/); 
-                if (line.includes(' connected ') && modeMatch) {
-                    const monitor = line.split(' ')[0];
-                    if (isConfigsMapEmpty) {
-                        const modeStr = modeMatch[1];
-                        let [mode, ...pos] = modeStr.split('+');
-                        pos = pos.join('x');
-                        this._configsMap[monitor] = {mode, pos};
-                    }
-                    // Set current monitor control
-                    if (!line.includes(' primary ') && !this._monitor) {
-                        this._monitor = monitor;
-                    }
-                }
-            }
-            if (isConfigsMapEmpty) {
-                // Sort configsMap by order of pos num value (lower first)
-                this._configsMap = new Map([...this._configsMap.entries()].sort((a, b) => {
-                    const posA = parseInt(a[1].pos.split('x')[0]);
-                    const posB = parseInt(b[1].pos.split('x')[0]);
-                    return posA - posB;
-                }));
-            }
-            this._updateSelectedMonitor();
-        } catch (e) {
-            console.error(e);
-        }
-    }
+    async _toggleSecondMonitor() {
+        if (!this._proxy) return;
     
-    _toggleSecondMonitor() {
-        this._sync();
-        if (this.checked) {
-            console.debug(`Disabling monitor: ${this._monitor}`);
-            Gio.Subprocess.new(['xrandr', '--output', this._monitor, '--off'], Gio.SubprocessFlags.NONE);
-        } else {
-            console.debug(`Enabling monitor: ${this._monitor}`);
-            if (Object.keys(this._configsMap).length > 0) {
-                // Build xrandr command to restore initial monitor configuration
-                let cmd = ['xrandr'];
-                Object.entries(this._configsMap).forEach(([monitor, config]) => {
-                    cmd.push('--output', monitor, '--mode', config.mode, '--pos', config.pos);
-                });
-                // Run xrandr command
-                Gio.Subprocess.new(cmd, Gio.SubprocessFlags.NONE);
-            } else {
-                console.warn('Failed to restore initial monitor configuration');
-            }
+        console.log('Current layout mode:', this._layoutMode);
+        console.log('Supports changing layout mode:', this._supportsChangingLayoutMode);
+    
+        // Vérifier l'état actuel du second écran
+        const isSecondMonitorActive = this._logicalMonitors.length > 1;
+    
+        // Basculer l'état du second écran
+        const newLogicalMonitors = isSecondMonitorActive
+            ? this._logicalMonitors.filter(lm => lm[4]) // Si actif, ne garder que le moniteur principal
+            : this._logicalMonitors; // Si inactif, restaurer tous les moniteurs
+    
+        const convertedLogicalMonitors = newLogicalMonitors.map(lm => {
+            const [x, y, scale, transform, isPrimary, monitors, properties] = lm;
+            const convertedMonitors = monitors.map(m => {
+                const monitor = this._monitors.find(mon => mon[0][0] === m[0]);
+                // console.log(`Monitor ${m[0]} full data:`, JSON.stringify(monitor, null, 2));
+                const validModes = monitor[1].filter(mode => typeof mode[0] === 'string').map(mode => mode[0]);
+                console.log(`Valid modes for ${m[0]}:`, validModes);
+                let modeId = m[1];
+                
+                if (validModes.length === 0) {
+                    console.log(`No valid modes found for monitor ${m[0]}`);
+                    return null;
+                }
+                
+                if (!validModes.includes(modeId)) {
+                    console.warn(`Invalid mode ${modeId} for monitor ${m[0]}. Using current mode.`);
+                    modeId = monitor[1][0][0]; // Use the first mode as current mode
+                }
+                
+                console.log(`Mode selected for ${m[0]}: ${modeId}`);
+                return [m[0], modeId, {}];
+            }).filter(m => m !== null);
+            return [x, y, scale, transform, isPrimary, convertedMonitors, properties];
+        });
+    
+        const properties = {};
+        if (this._supportsChangingLayoutMode) {
+            properties['layout-mode'] = new GLib.Variant('u', this._layoutMode);
         }
-        
+    
+        if (convertedLogicalMonitors.length === 0 || convertedLogicalMonitors.some(lm => lm[5].length === 0)) {
+            console.log('No valid monitor configurations found. Aborting.');
+            this._disableToggle();
+            return;
+        }
+    
+        try {
+            console.log('Applying monitor config:', JSON.stringify({
+                serial: this._serial,
+                method: 2,
+                logicalMonitors: convertedLogicalMonitors,
+                properties: properties
+            }, null, 2));
+            await this._proxy.ApplyMonitorsConfigAsync(
+                this._serial,
+                2, // PERSISTENT_METHOD
+                convertedLogicalMonitors,
+                properties
+            );
+            await this._getMonitorConfig();
+        } catch (e) {
+            console.log('Error applying monitor configuration:', e);
+            console.log('Converted logical monitors:', JSON.stringify(convertedLogicalMonitors, null, 2));
+            console.log('Properties:', JSON.stringify(properties, null, 2));
+            this._disableToggle();
+        }
+    
         this._timeoutId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 1000, () => {
             this._sync();
             return GLib.SOURCE_REMOVE;
         });
+    }    
+
+    _disableToggle() {
+        this.checked = false;
+        this.sensitive = false;
     }
-    
+
     destroy() {
         if (this._timeoutId) {
             GLib.Source.remove(this._timeoutId);
@@ -188,7 +252,7 @@ export default class DualMonitorExtension {
     }
     
     disable() {
-        console.debug(`Disabling Dual Monitor Toggle`);
+        console.log(`Disabling Dual Monitor Toggle`);
         
         this._indicator.quickSettingsItems.forEach(item => item.destroy());
         this._indicator.quickSettingsItems = [];
