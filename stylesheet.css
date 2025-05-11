@@ -1,16 +1,57 @@
 .selectLabel {
     font-weight: bold;
-    font-size: 1.2em;
-    padding: 5px;
-    color: white;
+    font-size: 1.1em;
+    padding: 8px 12px;
+    color: #ffffff;
 }
 
 .selectLabel .popup-menu-icon {
-    color: white;
+    color: #ffffff;
     margin-right: 7px;
 }
 
-.selectedMonitor {
+.monitor-item-box {
+    padding: 6px 0px;
+    margin-left: 4px;
+}
+
+.monitor-selection-indicator {
+    color: #ffffff;
+    margin-right: 5px;
+    min-width: 8px;
+}
+
+.monitor-info-box {
+    margin-left: 6px;
+}
+
+.monitor-item-label {
+    font-weight: normal;
+}
+
+.monitor-resolution-label {
+    font-size: 0.85em;
+    color: #999999;
+}
+
+.monitor-item-entry.selected-monitor-entry .monitor-item-label {
     font-weight: bold;
+    color: #ffffff;
+}
+
+.monitor-item-entry.selected-monitor-entry .monitor-resolution-label {
+    color: #cccccc;
+}
+
+.monitor-icon-active {
+    color: #e0e0e0;
+}
+
+.monitor-icon-inactive {
+    color: #999999;
+}
+
+.monitor-item-entry.selected-monitor-entry {
     background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
 }
