@@ -1,4 +1,5 @@
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
+import { Extension } from 'resource:///org/gnome/shell/extensions/extension.js';
 import { SecondMonitorIndicator } from './lib/indicator.js';
 
 // All other classes, constants, and most imports have been moved to their respective files:
@@ -9,9 +10,10 @@ import { SecondMonitorIndicator } from './lib/indicator.js';
 // - indicator.js: The SecondMonitorIndicator class (imported above).
 
 // Main extension class
-export default class DualMonitorExtension {
+export default class DualMonitorExtension extends Extension {
     enable() {
-        this._indicator = new SecondMonitorIndicator();
+        this._settings = this.getSettings();
+        this._indicator = new SecondMonitorIndicator(this._settings);
         Main.panel.statusArea.quickSettings.addExternalIndicator(this._indicator);
         console.log("Dual Monitor Toggle Enabled");
     }
