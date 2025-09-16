@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist>
+  <schema id="org.gnome.shell.extensions.dual-monitor-toggle" path="/org/gnome/shell/extensions/dual-monitor-toggle/">
+    <key name="mode-setting" type="i">
+      <default>2</default>
+      <summary>Configuration mode setting</summary>
+      <description>1 for Temporary Mode, 2 for Persistent Mode.</description>
+    </key>
+    <key name="monitor-setting" type="s">
+      <default>""</default>
+      <summary>Selected monitor setting</summary>
+      <description>Stores the connector name of the monitor chosen in the quick toggle (e.g. HDMI-1, DP-2).</description>
+    </key>
+  </schema>
+</schemalist>
