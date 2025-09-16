@@ -12,5 +12,5 @@
   "settings-schema": "org.gnome.shell.extensions.dual-monitor-toggle",
   "url": "https://github.com/poka-IT/gnome-dual-monitor-toggle",
   "uuid": "dual-monitor-toggle@poka",
-  "version": 8
+  "version": 9
 }
