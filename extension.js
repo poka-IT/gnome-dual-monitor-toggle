@@ -24,6 +24,7 @@ export default class DualMonitorExtension extends Extension {
             this._indicator.destroy();
             this._indicator = null;
         }
+        this._settings = null;
         console.log("Dual Monitor Toggle Disabled");
     }
 }
