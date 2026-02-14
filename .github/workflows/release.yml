@@ -1,0 +1,80 @@
+name: Build & Release GNOME Extension
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g. 9)'
+        required: false
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Read extension metadata
+        id: meta
+        run: |
+          UUID=$(jq -r '.uuid' metadata.json)
+          VERSION=$(jq -r '.version' metadata.json)
+          NAME=$(jq -r '.name' metadata.json)
+          echo "uuid=$UUID" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "name=$NAME" >> "$GITHUB_OUTPUT"
+
+      - name: Compile GSettings schema
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq libglib2.0-bin > /dev/null
+          glib-compile-schemas schemas/
+
+      - name: Package extension
+        run: |
+          ZIP_NAME="${{ steps.meta.outputs.uuid }}.shell-extension.zip"
+          zip -r "$ZIP_NAME" \
+            metadata.json \
+            extension.js \
+            stylesheet.css \
+            lib/ \
+            schemas/ \
+            LICENSE \
+            README.md
+          echo "zip_name=$ZIP_NAME" >> "$GITHUB_ENV"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: gnome-extension
+          path: ${{ env.zip_name }}
+
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "${{ steps.meta.outputs.name }} v${{ steps.meta.outputs.version }}"
+          body: |
+            ## Installation
+
+            1. Download **`${{ env.zip_name }}`** below.
+            2. Install with:
+               ```
+               gnome-extensions install ${{ env.zip_name }}
+               ```
+            3. Restart GNOME Shell (`Alt+F2` → type `r` → Enter) or log out and back in.
+            4. Enable the extension:
+               ```
+               gnome-extensions enable ${{ steps.meta.outputs.uuid }}
+               ```
+
+            Or extract the ZIP to `~/.local/share/gnome-shell/extensions/${{ steps.meta.outputs.uuid }}/` manually.
+          files: ${{ env.zip_name }}
+          generate_release_notes: true

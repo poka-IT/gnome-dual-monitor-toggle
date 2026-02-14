@@ -12,12 +12,30 @@ Dual Monitor Toggle is a GNOME Shell extension that allows you to easily enable 
 
 ## Installation
 
-1. Download the latest release of the extension from the [GNOME Extensions website](https://extensions.gnome.org/extension/6898/dual-monitor-toggle/) or from the [GitHub releases page](https://github.com/poka-IT/gnome-dual-monitor-toggle/releases).
-2. Extract the downloaded ZIP file to the GNOME Shell extensions directory:
-   - For local user installation: `~/.local/share/gnome-shell/extensions/`
-   - For system-wide installation: `/usr/share/gnome-shell/extensions/`
-3. Log out and log back in, or restart GNOME Shell by pressing `Alt`+`F2`, typing `r`, and pressing `Enter`.
-4. Enable the extension
+### Option 1: Download from Releases (easiest — no code knowledge needed)
+
+1. Go to the [GitHub Releases page](https://github.com/poka-IT/gnome-dual-monitor-toggle/releases) and download the latest `.zip` file.
+2. Install it with one command:
+   ```bash
+   gnome-extensions install dual-monitor-toggle@poka.shell-extension.zip
+   ```
+3. Restart GNOME Shell (`Alt`+`F2` → type `r` → Enter) or log out and back in.
+4. Enable the extension:
+   ```bash
+   gnome-extensions enable dual-monitor-toggle@poka
+   ```
+
+### Option 2: Install from GNOME Extensions website
+
+1. Visit the [GNOME Extensions page](https://extensions.gnome.org/extension/6898/dual-monitor-toggle/) and toggle it on.
+
+### Option 3: Manual installation
+
+1. Extract the downloaded ZIP file to the GNOME Shell extensions directory:
+   - For local user installation: `~/.local/share/gnome-shell/extensions/dual-monitor-toggle@poka/`
+   - For system-wide installation: `/usr/share/gnome-shell/extensions/dual-monitor-toggle@poka/`
+2. Log out and log back in, or restart GNOME Shell by pressing `Alt`+`F2`, typing `r`, and pressing `Enter`.
+3. Enable the extension
 
 ## Usage
 
